@@ -3,6 +3,7 @@ package series.users.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import series.users.errors.*;
 import series.users.models.Serie;
@@ -49,7 +50,12 @@ public class Controller {
             throw new RequestUnauthorizedException();
         if (this.user.getId() == sharedSerie.getUserId())
             throw new ForbiddenException("You cannot share a serie with youself");
-        Serie serie = restTemplate.getForObject("http://localhost:8001/series/"+sharedSerie.getSerieId(), Serie.class);
+        Serie serie;
+        try {
+            serie = restTemplate.getForObject("http://localhost:8001/series/"+sharedSerie.getSerieId(), Serie.class);
+        }catch (ResourceAccessException e){
+            throw new NotFoundException();
+        }
         if (serie == null || this.user.getId() != serie.getUserid())
             throw new ForbiddenException("You cannot share a serie you do not own");
         if(sharedSerie.getSerieId() == null || sharedSerie.getUserId() == null || sharedSerie.getPermission() == null)
@@ -62,7 +68,12 @@ public class Controller {
                                   @RequestParam(name = "serieid", required = true) Long serieid) {
         if (this.user == null)
             throw new RequestUnauthorizedException();
-        Serie serie = restTemplate.getForObject("http://localhost:8001/series/"+serieid, Serie.class);
+        Serie serie;
+        try {
+            serie = restTemplate.getForObject("http://localhost:8001/series/"+serieid, Serie.class);
+        }catch (ResourceAccessException e){
+            throw new NotFoundException();
+        }
         if (serie == null || this.user.getId() != serie.getUserid())
             throw new ForbiddenException("You cannot revoke permissions on a serie you do not own");
         sharedSeriesService.removeAccess(userid, serieid);
